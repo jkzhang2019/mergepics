@@ -230,7 +230,7 @@ def main():
             VideoCreator.create_video(
                 input_dir=args.input_dir,
                 output_filename=args.output_filename,
-                start=args.start,
+                start=args.start - 1,
                 step=args.step,
                 fps=args.fps,
                 duration=args.duration,
@@ -243,7 +243,7 @@ def main():
             VerticalCompositor.create_composite(
                 input_dir=args.input_dir,
                 output_filename=args.output_filename,
-                start=0,
+                start=args.start - 1,
                 step=args.step,
                 img_prefix=args.prefix,
                 img_ext=args.ext,
