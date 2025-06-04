@@ -72,7 +72,7 @@ class VideoCreator(ImageProcessor):
     """Create video from image sequence"""
     
     @classmethod
-    def create_video(cls, input_dir, output_filename, step=1, fps=30, duration=None, 
+    def create_video(cls, input_dir, output_filename, start=0, step=1, fps=30, duration=None, 
                     img_prefix=None, img_ext=None, loop=False, overwrite=False):
         """
         Create video from images with progress bar and RAW support
@@ -86,7 +86,7 @@ class VideoCreator(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, 0, step)
+        selected_files = cls.select_images(image_files, start, step)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
@@ -135,7 +135,7 @@ class VerticalCompositor(ImageProcessor):
     """Create vertical composite image from multiple images"""
     
     @classmethod
-    def create_composite(cls, input_dir, output_filename, step=1, 
+    def create_composite(cls, input_dir, output_filename, start=0, step=1, 
                         img_prefix=None, img_ext=None, overwrite=False):
         """Create vertical composite image"""
         # Check output file
@@ -147,7 +147,7 @@ class VerticalCompositor(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, 0, step)
+        selected_files = cls.select_images(image_files, start, step)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
@@ -194,6 +194,8 @@ def parse_arguments():
     common_args = argparse.ArgumentParser(add_help=False)
     common_args.add_argument('input_dir', help='Input directory containing images')
     common_args.add_argument('output_filename', help='Output filename')
+    common_args.add_argument('-S', '--start', type=int, default=1,
+                           help='Set first image (default: 1)')
     common_args.add_argument('-N', '--step', type=int, default=1,
                            help='Select every Nth image (default: 1)')
     common_args.add_argument('--prefix', default=ImageProcessor.DEFAULT_IMG_PREFIX,
@@ -228,6 +230,7 @@ def main():
             VideoCreator.create_video(
                 input_dir=args.input_dir,
                 output_filename=args.output_filename,
+                start=args.start,
                 step=args.step,
                 fps=args.fps,
                 duration=args.duration,
@@ -240,6 +243,7 @@ def main():
             VerticalCompositor.create_composite(
                 input_dir=args.input_dir,
                 output_filename=args.output_filename,
+                start=0,
                 step=args.step,
                 img_prefix=args.prefix,
                 img_ext=args.ext,
