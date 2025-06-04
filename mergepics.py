@@ -59,11 +59,13 @@ class ImageProcessor:
             return Image.open(image_path)
     
     @classmethod
-    def select_images(cls, image_files, step=1):
-        """Select images with given step interval"""
+    def select_images(cls, image_files, start=0, step=1):
+        """Select images with given step interval, starting from the specified element"""
         if step < 1:
             raise ValueError("Step must be positive integer")
-        return image_files[::step]
+        if not (0 <= start < len(image_files)):
+            raise ValueError("Start index out of range")
+        return image_files[start::step]
 
 
 class VideoCreator(ImageProcessor):
@@ -84,7 +86,7 @@ class VideoCreator(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, step)
+        selected_files = cls.select_images(image_files, 0, step)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
@@ -145,7 +147,7 @@ class VerticalCompositor(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, step)
+        selected_files = cls.select_images(image_files, 0, step)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
