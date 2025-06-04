@@ -53,31 +53,33 @@ class ImageProcessor:
             # Process Nikon RAW file
             with rawpy.imread(image_path) as raw:
                 rgb = raw.postprocess(
-		    use_camera_wb=True,
+                    use_camera_wb=True,
                     half_size=False,
                     no_auto_bright=True,
                     output_bps=8
-		)
+                )
                 return Image.fromarray(rgb)
         else:
             # Process standard image file
             return Image.open(image_path)
     
     @classmethod
-    def select_images(cls, image_files, start=0, step=1):
+    def select_images(cls, image_files, start=0, end=0, step=1):
         """Select images with given step interval, starting from the specified element"""
         if step < 1:
             raise ValueError("Step must be positive integer")
         if not (0 <= start < len(image_files)):
             raise ValueError("Start index out of range")
-        return image_files[start::step]
+        if end<=0 or end >= len(image_files):
+            return image_files[start::step]
+        return image_files[start:end:step]
 
 
 class VideoCreator(ImageProcessor):
     """Create video from image sequence"""
     
     @classmethod
-    def create_video(cls, input_dir, output_filename, start=0, step=1, fps=30, duration=None, 
+    def create_video(cls, input_dir, output_filename, start=0, end=0, step=1, fps=30, duration=None,
                     img_prefix=None, img_ext=None, loop=False, overwrite=False):
         """
         Create video from images with progress bar and RAW support
@@ -91,7 +93,7 @@ class VideoCreator(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, start, step)
+        selected_files = cls.select_images(image_files, start, end, step)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
@@ -140,7 +142,7 @@ class VerticalCompositor(ImageProcessor):
     """Create vertical composite image from multiple images"""
     
     @classmethod
-    def create_composite(cls, input_dir, output_filename, start=0, step=1, 
+    def create_composite(cls, input_dir, output_filename, start=0, end=0, step=1,
                         img_prefix=None, img_ext=None, overwrite=False):
         """Create vertical composite image"""
         # Check output file
@@ -152,7 +154,7 @@ class VerticalCompositor(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, start, step)
+        selected_files = cls.select_images(image_files, start, end, step)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
@@ -201,6 +203,8 @@ def parse_arguments():
     common_args.add_argument('output_filename', help='Output filename')
     common_args.add_argument('-S', '--start', type=int, default=1,
                            help='Set first image (default: 1)')
+    common_args.add_argument('-E', '--end', type=int, default=0,
+                           help='Set last image (default: 0,no limitation)')
     common_args.add_argument('-N', '--step', type=int, default=1,
                            help='Select every Nth image (default: 1)')
     common_args.add_argument('--prefix', default=ImageProcessor.DEFAULT_IMG_PREFIX,
@@ -236,6 +240,7 @@ def main():
                 input_dir=args.input_dir,
                 output_filename=args.output_filename,
                 start=args.start - 1,
+                end=args.end,
                 step=args.step,
                 fps=args.fps,
                 duration=args.duration,
@@ -249,6 +254,7 @@ def main():
                 input_dir=args.input_dir,
                 output_filename=args.output_filename,
                 start=args.start - 1,
+                end=args.end,
                 step=args.step,
                 img_prefix=args.prefix,
                 img_ext=args.ext,
