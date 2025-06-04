@@ -11,8 +11,7 @@ A Python tool for creating videos and vertical composites from image sequences, 
 
 ## Installation
 ```bash
-git clone https://github.com/your-username/ImageProcessor.git
-cd ImageProcessor
+git clone https://github.com/jkzhang2019/mergepics.git
+cd mergepics
 pip install -r requirements.txt
-
 
