@@ -52,7 +52,12 @@ class ImageProcessor:
         if ext in cls.SUPPORTED_RAW_EXTENSIONS:
             # Process Nikon RAW file
             with rawpy.imread(image_path) as raw:
-                rgb = raw.postprocess()
+                rgb = raw.postprocess(
+		    use_camera_wb=True,
+                    half_size=False,
+                    no_auto_bright=True,
+                    output_bps=8
+		)
                 return Image.fromarray(rgb)
         else:
             # Process standard image file
