@@ -174,8 +174,9 @@ class VerticalCompositor(ImageProcessor):
         current_col = 0
         
         try:
-            for i, image_file in enumerate(selected_files):
-                cols = cols_per_image + (1 if i < remaining_cols else 0)
+            for img_idx in tqdm(range(len(selected_files)), desc="Generating image"):
+                image_file = selected_files[img_idx]
+                cols = cols_per_image + (1 if img_idx < remaining_cols else 0)
                 img_path = os.path.join(input_dir, image_file)
                 
                 with cls.open_image(img_path) as img:
