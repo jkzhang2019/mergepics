@@ -56,7 +56,7 @@ class ImageProcessor:
                     use_camera_wb=True,
                     half_size=False,
                     no_auto_bright=True,
-                    output_bps=8
+                    output_bps=16
                 )
                 return Image.fromarray(rgb)
         else:
