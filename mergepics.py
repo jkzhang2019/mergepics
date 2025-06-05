@@ -73,6 +73,109 @@ class ImageProcessor:
         if end<=0 or end >= len(image_files):
             return image_files[start::step]
         return image_files[start:end:step]
+    @classmethod
+    def select_imagesx(cls, image_files, input_dir=None, start=0, end=None, step=1, 
+                     brightness_threshold=None, min_brightness_diff=10.0):
+        """
+        选择图像序列，支持亮度差异过滤
+        
+        参数:
+            image_files: 图像文件列表
+            input_dir: 图像所在目录 (亮度计算需要)
+            start: 起始索引 (默认0)
+            end: 结束索引 (None表示到末尾)
+            step: 选择步长 (默认1)
+            brightness_threshold: 亮度阈值 (None表示不过滤)
+            min_brightness_diff: 最小亮度差异 (默认10.0)
+        
+        返回:
+            选择后的图像文件列表
+        """
+        # 验证参数
+        if step < 1:
+            raise ValueError("Step must be positive integer")
+        if start < 0 or start >= len(image_files):
+            raise ValueError(f"Start index {start} out of range [0, {len(image_files)-1}]")
+        
+        # 确定结束索引
+        if end is None or end <= 0 or end > len(image_files):
+            end = len(image_files)
+        
+        # 获取子集
+        subset = image_files[start:end]
+        
+        # 使用亮度差异过滤
+        if brightness_threshold is not None and input_dir:
+            return cls._select_by_brightness(subset, input_dir, min_brightness_diff, brightness_threshold)
+        
+        # 使用步长选择
+        return subset[::step]
+    
+    @classmethod
+    def _select_by_brightness(cls, image_files, input_dir, min_diff, brightness_threshold):
+        """
+        基于亮度差异选择图像
+        
+        参数:
+            image_files: 图像文件列表
+            input_dir: 图像所在目录
+            min_diff: 最小亮度差异
+            brightness_threshold: 亮度阈值
+        
+        返回:
+            选择后的图像文件列表
+        """
+        selected_files = []
+        last_brightness = None
+        
+        # 使用tqdm显示进度条
+        for idx, filename in enumerate(tqdm(image_files, desc="亮度分析")):
+            img_path = os.path.join(input_dir, filename)
+            
+            try:
+                # 计算当前图像亮度
+                brightness = cls._calculate_brightness(img_path)
+                
+                # 检查是否满足亮度阈值
+                if brightness_threshold is not None and brightness < brightness_threshold:
+                    continue
+                    
+                # 首次添加或亮度差异足够大
+                if last_brightness is None or abs(brightness - last_brightness) >= min_diff:
+                    selected_files.append(filename)
+                    last_brightness = brightness
+            except Exception as e:
+                print(f"处理 {filename} 时出错: {e}")
+        
+        print(f"亮度过滤: 从 {len(image_files)} 张中选出 {len(selected_files)} 张图像")
+        return selected_files
+    
+    @classmethod
+    def _calculate_brightness(cls, image_path, resize_factor=0.2):
+        """
+        计算图像平均亮度 (高效方法)
+        
+        参数:
+            image_path: 图像路径
+            resize_factor: 缩放因子 (加速处理)
+        
+        返回:
+            平均亮度值 (0-255)
+        """
+        # 打开图像并转换为灰度
+        with cls.open_image(image_path) as img:
+            # 转换为灰度图
+            gray_img = img.convert("L")
+            
+            # 缩小图像以加快处理速度
+            if resize_factor < 1.0:
+                new_size = (int(gray_img.width * resize_factor), 
+                            int(gray_img.height * resize_factor))
+                gray_img = gray_img.resize(new_size, Image.LANCZOS)
+            
+            # 转换为numpy数组计算平均值
+            img_array = np.array(gray_img)
+            return np.mean(img_array)
 
 
 class VideoCreator(ImageProcessor):
@@ -93,7 +196,7 @@ class VideoCreator(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, start, end, step)
+        selected_files = cls.select_imagesx(image_files, input_dir, start, end, step)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
@@ -142,7 +245,7 @@ class VerticalCompositor(ImageProcessor):
     """Create vertical composite image from multiple images"""
     
     @classmethod
-    def create_composite(cls, input_dir, output_filename, start=0, end=0, step=1,
+    def create_composite(cls, input_dir, output_filename, start=0, end=0, step=1, min_diff=0,
                         img_prefix=None, img_ext=None, overwrite=False):
         """Create vertical composite image"""
         # Check output file
@@ -154,7 +257,7 @@ class VerticalCompositor(ImageProcessor):
         if not image_files:
             raise FileNotFoundError(f"No images found with prefix '{img_prefix}' and ext '{img_ext}'")
         
-        selected_files = cls.select_images(image_files, start, end, step)
+        selected_files = cls.select_imagesx(image_files, input_dir, start, end, step, 0, min_diff)
         if not selected_files:
             raise ValueError(f"Step value ({step}) too large, no images selected")
         
@@ -228,7 +331,10 @@ def parse_arguments():
     # Vertical command
     vertical_parser = subparsers.add_parser('vertical', parents=[common_args],
                                           help='Create vertical composite image')
-    
+    vertical_parser.add_argument('--brightness', type=float, default=None,
+                       help='Minimum brightness threshold (0-255)')
+    vertical_parser.add_argument('--min-diff', type=float, default=10.0,
+                       help='Minimum brightness difference between consecutive images')
     return parser.parse_args()
 
 
@@ -257,6 +363,7 @@ def main():
                 start=args.start - 1,
                 end=args.end,
                 step=args.step,
+                min_diff=args.min_diff,
                 img_prefix=args.prefix,
                 img_ext=args.ext,
                 overwrite=args.overwrite
